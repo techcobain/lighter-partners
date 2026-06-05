@@ -35,6 +35,7 @@ import { clearLighterClient, getLighterPublicKey, prepareLighterClient, signAppr
 import {
   type ApprovalAction,
   type ApprovalFormState,
+  approvalRequiresWalletSignature,
   isEthereumAddress,
   looksLikeLighterApiPrivateKey,
   validateApprovalForm
@@ -455,32 +456,42 @@ function App() {
 
       setStep("signing-lighter");
       const lighterTx = await signApprovalWithLighter(result.payload, nonce);
-      const verifiedMessage = buildApproveIntegratorMessage(result.payload, nonce, network.chainId);
-      if (lighterTx.messageToSign !== verifiedMessage) {
-        throw new Error("Lighter signer returned an unexpected L1 approval message. Wallet signing was blocked.");
+      let signedTxInfo = lighterTx.txInfo;
+      if (approvalRequiresWalletSignature(action, result.payload)) {
+        const verifiedMessage = buildApproveIntegratorMessage(result.payload, nonce, network.chainId);
+        if (lighterTx.messageToSign !== verifiedMessage) {
+          throw new Error("Lighter signer returned an unexpected L1 approval message. Wallet signing was blocked.");
+        }
+
+        setStep("reviewing-signature");
+        await requestSigningReview({
+          action,
+          apiHost: network.apiUrl,
+          chainId: network.chainId,
+          walletAddress,
+          accountIndex: result.payload.accountIndex,
+          apiKeyIndex: result.payload.apiKeyIndex,
+          integratorAccountIndex: result.payload.integratorAccountIndex,
+          maxPerpsTakerFee: result.payload.maxPerpsTakerFee,
+          maxPerpsMakerFee: result.payload.maxPerpsMakerFee,
+          maxSpotTakerFee: result.payload.maxSpotTakerFee,
+          maxSpotMakerFee: result.payload.maxSpotMakerFee,
+          approvalExpiry: result.payload.approvalExpiry,
+          nonce,
+          messageToSign: verifiedMessage
+        });
+
+        setStep("signing-wallet");
+        const l1Signature = await signVerifiedApprovalMessage(
+          provider,
+          walletAddress,
+          result.payload,
+          nonce,
+          network.chainId,
+          lighterTx.messageToSign
+        );
+        signedTxInfo = withL1Signature(lighterTx.txInfo, l1Signature);
       }
-
-      setStep("reviewing-signature");
-      await requestSigningReview({
-        action,
-        apiHost: network.apiUrl,
-        chainId: network.chainId,
-        walletAddress,
-        accountIndex: result.payload.accountIndex,
-        apiKeyIndex: result.payload.apiKeyIndex,
-        integratorAccountIndex: result.payload.integratorAccountIndex,
-        maxPerpsTakerFee: result.payload.maxPerpsTakerFee,
-        maxPerpsMakerFee: result.payload.maxPerpsMakerFee,
-        maxSpotTakerFee: result.payload.maxSpotTakerFee,
-        maxSpotMakerFee: result.payload.maxSpotMakerFee,
-        approvalExpiry: result.payload.approvalExpiry,
-        nonce,
-        messageToSign: verifiedMessage
-      });
-
-      setStep("signing-wallet");
-      const l1Signature = await signVerifiedApprovalMessage(provider, walletAddress, result.payload, nonce, network.chainId, lighterTx.messageToSign);
-      const signedTxInfo = withL1Signature(lighterTx.txInfo, l1Signature);
 
       setStep("submitting");
       const response = await sendApprovalTx(network.apiUrl, lighterTx.txType, signedTxInfo);
@@ -764,7 +775,7 @@ function App() {
               <ShieldCheck size={18} />
               <h3>Approval</h3>
             </div>
-            <p className="section-subtitle">Requires L2 signature (using the above API key) and L1 signature (via the connected wallet).</p>
+            <p className="section-subtitle">Zero-fee approvals use only the L2 API-key signature. Fee approvals and revokes also require a wallet signature.</p>
             <div className="form-grid two">
               <label className="field">
                 <span>Integrator account index</span>
@@ -1031,6 +1042,13 @@ function App() {
           </section>
         </div>
       ) : null}
+      <footer className="app-footer">
+        This application is{" "}
+        <a href="https://github.com/techcobain/Lighter-partners" target="_blank" rel="noopener noreferrer">
+          open source
+        </a>{" "}
+        — verify the code before use.
+      </footer>
     </main>
     </>
   );

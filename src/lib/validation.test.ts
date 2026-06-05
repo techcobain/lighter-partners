@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   LIGHTER_MAX_ACCOUNT_INDEX,
   LIGHTER_MAX_FEE,
+  approvalRequiresWalletSignature,
   dateTimeLocalToMs,
   isEthereumAddress,
+  isZeroFeeApprovalPayload,
   looksLikeLighterApiPrivateKey,
   parseInteger,
   validateApprovalForm,
@@ -70,6 +72,26 @@ describe("validation helpers", () => {
     }
   });
 
+  it("allows zero-fee approvals with a future non-zero expiry to skip wallet signing", () => {
+    const result = validateApprovalForm(
+      baseForm({
+        maxPerpsTakerFee: "0",
+        maxPerpsMakerFee: "0",
+        maxSpotTakerFee: "0",
+        maxSpotMakerFee: "0"
+      }),
+      "approve",
+      validKey,
+      Date.UTC(2026, 0, 1)
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(isZeroFeeApprovalPayload(result.payload)).toBe(true);
+      expect(approvalRequiresWalletSignature("approve", result.payload)).toBe(false);
+    }
+  });
+
   it("forces revoke payload fees and expiry to zero", () => {
     const result = validateApprovalForm(baseForm({ approvalExpiry: "2020-01-01T00:00" }), "revoke", validKey, Date.UTC(2026, 0, 1));
     expect(result.ok).toBe(true);
@@ -79,6 +101,8 @@ describe("validation helpers", () => {
       expect(result.payload.maxSpotTakerFee).toBe(0);
       expect(result.payload.maxSpotMakerFee).toBe(0);
       expect(result.payload.approvalExpiry).toBe(0);
+      expect(isZeroFeeApprovalPayload(result.payload)).toBe(false);
+      expect(approvalRequiresWalletSignature("revoke", result.payload)).toBe(false);
     }
   });
 

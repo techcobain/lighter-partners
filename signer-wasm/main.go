@@ -10,12 +10,15 @@ import (
 	"github.com/elliottech/lighter-go/client"
 	"github.com/elliottech/lighter-go/types"
 	"github.com/elliottech/lighter-go/types/txtypes"
+	p2 "github.com/elliottech/poseidon_crypto/hash/poseidon2_goldilocks_plonky2"
+	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 const (
 	maxAPIKeyIndex        = 254
 	maxAccountIndex int64 = 281_474_976_710_654
+	maxTimestamp    int64 = 281_474_976_710_655
 	maxUint32       int64 = 4_294_967_295
 )
 
@@ -67,6 +70,9 @@ func getClient(args []js.Value) (*client.TxClient, error) {
 
 func messageToSign(txInfo txtypes.TxInfo) string {
 	if typed, ok := txInfo.(*txtypes.L2ApproveIntegratorTxInfo); ok {
+		if hasZeroApprovalFees(typed) {
+			return ""
+		}
 		return typed.GetL1SignatureBody(activeChainID)
 	}
 	return ""
@@ -102,6 +108,79 @@ func txAttributesWithSkipNonce(skipNonce uint8) *types.L2TxAttributes {
 		attr.SkipNonce = &skipNonce
 	}
 	return attr
+}
+
+func isZeroFeeApproval(txInfo *txtypes.L2ApproveIntegratorTxInfo) bool {
+	return txInfo.ApprovalExpiry > 0 &&
+		hasZeroApprovalFees(txInfo)
+}
+
+func hasZeroApprovalFees(txInfo *txtypes.L2ApproveIntegratorTxInfo) bool {
+	return txInfo.MaxPerpsTakerFee == 0 &&
+		txInfo.MaxPerpsMakerFee == 0 &&
+		txInfo.MaxSpotTakerFee == 0 &&
+		txInfo.MaxSpotMakerFee == 0
+}
+
+func isZeroFeeApprovalReq(req *types.ApproveIntegratorTxReq) bool {
+	return req.ApprovalExpiry > 0 &&
+		req.MaxPerpsTakerFee == 0 &&
+		req.MaxPerpsMakerFee == 0 &&
+		req.MaxSpotTakerFee == 0 &&
+		req.MaxSpotMakerFee == 0
+}
+
+func validateZeroFeeApproval(txInfo *txtypes.L2ApproveIntegratorTxInfo) error {
+	if err := txInfo.L2TxAttributes.Validate(); err != nil {
+		return err
+	}
+	if txInfo.AccountIndex < 0 || txInfo.AccountIndex > maxAccountIndex {
+		return fmt.Errorf("accountIndex must be an integer from 0 to %d", maxAccountIndex)
+	}
+	if txInfo.ApiKeyIndex > maxAPIKeyIndex {
+		return fmt.Errorf("apiKeyIndex must be an integer from 0 to %d", maxAPIKeyIndex)
+	}
+	if txInfo.IntegratorAccountIndex < 0 || txInfo.IntegratorAccountIndex > maxAccountIndex {
+		return fmt.Errorf("integratorIndex must be an integer from 0 to %d", maxAccountIndex)
+	}
+	if !isZeroFeeApproval(txInfo) {
+		return fmt.Errorf("zero-fee approval requires all fees to be zero and approval expiry to be non-zero")
+	}
+	if txInfo.ApprovalExpiry > maxTimestamp {
+		return fmt.Errorf("approvalExpiry must be an integer from 1 to %d", maxTimestamp)
+	}
+	if txInfo.Nonce < 0 {
+		return fmt.Errorf("nonce must be non-negative")
+	}
+	if txInfo.ExpiredAt < 0 || txInfo.ExpiredAt > maxTimestamp {
+		return fmt.Errorf("expiredAt must be an integer from 0 to %d", maxTimestamp)
+	}
+	return nil
+}
+
+func constructZeroFeeApproveIntegratorTx(c *client.TxClient, req *types.ApproveIntegratorTxReq, opts *types.TransactOpts) (*txtypes.L2ApproveIntegratorTxInfo, error) {
+	opts, err := c.FullFillDefaultOps(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	txInfo := types.ConvertApproveIntegratorTx(req, opts)
+	if err := validateZeroFeeApproval(txInfo); err != nil {
+		return nil, err
+	}
+
+	msgHash, err := txInfo.Hash(c.GetChainId())
+	if err != nil {
+		return nil, err
+	}
+	signature, err := c.GetKeyManager().Sign(msgHash, p2.NewPoseidon2())
+	if err != nil {
+		return nil, err
+	}
+
+	txInfo.SignedHash = ethCommon.Bytes2Hex(msgHash)
+	txInfo.Sig = signature
+	return txInfo, nil
 }
 
 func parseAPIKeyIndex(value js.Value, name string) (uint8, error) {
@@ -243,7 +322,12 @@ func main() {
 				opts.Nonce = &nonce
 			}
 
-			tx, err := c.GetApproveIntegratorTx(req, opts)
+			var tx *txtypes.L2ApproveIntegratorTxInfo
+			if isZeroFeeApprovalReq(req) {
+				tx, err = constructZeroFeeApproveIntegratorTx(c, req, opts)
+			} else {
+				tx, err = c.GetApproveIntegratorTx(req, opts)
+			}
 			return convertTxInfoToJS(tx, err)
 		})
 	}))

@@ -856,3 +856,21 @@ select.network-pill {
     align-self: stretch;
   }
 }
+
+/* Footer */
+.app-footer {
+  text-align: center;
+  padding: 24px 0 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.app-footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.app-footer a:hover {
+  color: var(--text-primary);
+}

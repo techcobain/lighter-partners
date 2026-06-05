@@ -9,7 +9,7 @@ export type LighterSignedTx = {
   txType: number;
   txInfo: string;
   txHash: string;
-  messageToSign: string;
+  messageToSign?: string;
 };
 
 type WasmSignedTxResult = Partial<LighterSignedTx> & {
@@ -109,9 +109,7 @@ export async function signApprovalWithLighter(payload: ApprovalPayload, nonce: n
   if (
     typeof result.txType !== "number" ||
     typeof result.txInfo !== "string" ||
-    typeof result.txHash !== "string" ||
-    typeof result.messageToSign !== "string" ||
-    result.messageToSign.length === 0
+    typeof result.txHash !== "string"
   ) {
     throw new Error("Lighter signer returned an incomplete approval transaction.");
   }
@@ -120,7 +118,7 @@ export async function signApprovalWithLighter(payload: ApprovalPayload, nonce: n
     txType: result.txType,
     txInfo: result.txInfo,
     txHash: result.txHash,
-    messageToSign: result.messageToSign
+    messageToSign: typeof result.messageToSign === "string" && result.messageToSign.length > 0 ? result.messageToSign : undefined
   };
 }
 

@@ -103,6 +103,23 @@ export function validateApprovalForm(
   };
 }
 
+export function isZeroFeeApprovalPayload(payload: ApprovalPayload): boolean {
+  return payload.approvalExpiry > 0 && hasZeroApprovalFees(payload);
+}
+
+export function hasZeroApprovalFees(payload: ApprovalPayload): boolean {
+  return (
+    payload.maxPerpsTakerFee === 0 &&
+    payload.maxPerpsMakerFee === 0 &&
+    payload.maxSpotTakerFee === 0 &&
+    payload.maxSpotMakerFee === 0
+  );
+}
+
+export function approvalRequiresWalletSignature(_action: ApprovalAction, payload: ApprovalPayload): boolean {
+  return !hasZeroApprovalFees(payload);
+}
+
 export function parseInteger(value: string): number | null {
   const trimmed = value.trim();
   if (!/^\d+$/.test(trimmed)) {

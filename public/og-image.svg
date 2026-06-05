@@ -1,0 +1,52 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="blob1" cx="0.25" cy="0.15" r="0.4">
+      <stop offset="0%" stop-color="rgba(74,106,154,0.12)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="blob2" cx="0.8" cy="0.7" r="0.35">
+      <stop offset="0%" stop-color="rgba(90,173,105,0.08)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0a0a0f"/>
+  
+  <!-- Gradient blobs -->
+  <rect width="1200" height="630" fill="url(#blob1)"/>
+  <rect width="1200" height="630" fill="url(#blob2)"/>
+  
+  <!-- Subtle border -->
+  <rect x="1" y="1" width="1198" height="628" rx="0" fill="none" stroke="#2a2a35" stroke-width="1"/>
+  
+  <!-- Lighter logo mark (square container) -->
+  <rect x="80" y="245" width="64" height="64" rx="6" fill="rgba(74,106,154,0.12)" stroke="#2a2a35" stroke-width="1"/>
+  
+  <!-- Logo text placeholder - using the L shape approximation -->
+  <g transform="translate(96, 255)">
+    <!-- Left tall block -->
+    <path d="M0 0 L14 -4 L14 38 L0 42 Z" fill="#d0d0e0"/>
+    <!-- Right short block -->  
+    <path d="M18 22 L32 18 L32 42 L18 42 Z" fill="#d0d0e0"/>
+  </g>
+  
+  <!-- Eyebrow -->
+  <text x="170" y="267" fill="#606070" font-family="ui-monospace, SFMono-Regular, SF Mono, Consolas, monospace" font-size="14" font-weight="500" letter-spacing="2">LIGHTER PARTNER INTEGRATION</text>
+  
+  <!-- Title -->
+  <text x="170" y="300" fill="#f0f0f5" font-family="ui-monospace, SFMono-Regular, SF Mono, Consolas, monospace" font-size="32" font-weight="600">Approve &amp; Manage Partners</text>
+  
+  <!-- Accent line -->
+  <rect x="80" y="345" width="60" height="2" rx="1" fill="#4a6a9a"/>
+  
+  <!-- Subtitle -->
+  <text x="80" y="380" fill="#606070" font-family="ui-monospace, SFMono-Regular, SF Mono, Consolas, monospace" font-size="15">Manage integrator approvals on Lighter DEX</text>
+  
+  <!-- Bottom pills -->
+  <rect x="80" y="420" width="90" height="28" rx="4" fill="rgba(90,173,105,0.1)" stroke="rgba(90,173,105,0.3)" stroke-width="1"/>
+  <text x="104" y="439" fill="#5aad69" font-family="ui-monospace, SFMono-Regular, SF Mono, Consolas, monospace" font-size="12" font-weight="500">Mainnet</text>
+  
+  <rect x="182" y="420" width="120" height="28" rx="4" fill="rgba(74,106,154,0.1)" stroke="rgba(74,106,154,0.3)" stroke-width="1"/>
+  <text x="200" y="439" fill="#4a6a9a" font-family="ui-monospace, SFMono-Regular, SF Mono, Consolas, monospace" font-size="12" font-weight="500">Open Source</text>
+</svg>
